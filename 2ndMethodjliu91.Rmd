@@ -2,7 +2,6 @@
 title: "Second Method"
 output: html_document
 ---
-
 ```{r, echo=TRUE}
 
 #### Data preparation ####
@@ -54,7 +53,6 @@ plot2 <- predict2-test$SalePrice
 RMSE2 #0.138
 
 #### Plot: "Difference between predict and real values" ####
-
 data_plot <- data.frame("regression trees" = plot1,
                         "random forests" = plot2)
 data_plot$Id <- row.names(data_plot)
@@ -105,7 +103,6 @@ df$YrSold<-as.factor(df$YrSold)
 df$GarageYrBlt<-as.factor(df$GarageYrBlt)
 
 # Imputing missing data
-#Let's Formalize these ideas in one function:
 dfClean <-function(df){
   # Pool Variable: If PoolQC = NA and PoolArea = 0 , assign factor NoPool
   df$PoolQC <- as.character(df$PoolQC)
@@ -234,7 +231,6 @@ fillMiss<- function(x){
 df[,sapply(df,function(x){!(is.numeric(x))}) ]<-as.data.frame(apply(df[,sapply(df,function(x){!(is.numeric(x))}) ],2,fillMiss))
 
 # Set LotFrontage where it is not defined to sqrt(LotArea)
-# Inspired by https://www.kaggle.com/meikegw/house-prices-advanced-regression-techniques/filling-up-missing-values
 df$LotFrontage[is.na(df$LotFrontage)]=sqrt(df$LotArea)[is.na(df$LotFrontage)]
 
 # Finally get the training data back and transform
@@ -253,13 +249,12 @@ RMSE <- function(x,y){
     return(a)
 }
 
-
 ####Ridge####
-# convert any qualitative variables to dummy variables
-x=model.matrix(SalePrice~.,myData)[,-1] # get rid of intercept column
+# Convert any qualitative variables to dummy variables
+x=model.matrix(SalePrice~.,myData)[,-1] # toss out intercept column
 y=myData$SalePrice
 
-# split the dataset into training and testing
+# Split the dataset into training and testing
 train = sample(1:nrow(x), nrow(x)/2)
 test = -train
 
@@ -269,7 +264,7 @@ testing_x = x[test,]
 training_y = y[train]
 testing_y = y[test]
 
-# glmnet package to perform ridge and lasso
+# glmnet: Ridge and Lasso
 library(glmnet)
 #lambda 10^10 to 10^-2
 grid = 10^seq (10,-2,length =100)
@@ -287,26 +282,25 @@ plot(cv_error) # cross-validation curve (red dotted line), upper and lower stand
 best_lambda = cv_error$lambda.min
 best_lambda
 
-# model with best lambda
+# Model with Best Lambda
 model_coef = predict(ridge_model, 
                      type = "coefficients",
                      s= best_lambda)
 
-### test the model 
+### Test the Model 
 predicted_y = predict(ridge_model, 
                       s= best_lambda,
                       newx = testing_x)
 ### RMSE
 RMSE_RIDGE=RMSE(predicted_y, testing_y)
-RMSE_RIDGE #0.01708521
-
+RMSE_RIDGE 
 
 ####LASSO####
-# convert any qualitative variables to dummy variables
+# Convert any qualitative variables to dummy variables
 x=model.matrix(SalePrice~.,myData)[,-1] # get rid of intercept column
 y=myData$SalePrice
 
-# split the dataset into training and testing
+# Split the dataset into training and testing
 train = sample(1:nrow(x), nrow(x)/2)
 test = -train
 
@@ -340,13 +334,12 @@ model_coef = predict(lasso_model,
                      type = "coefficients",
                      s= best_lambda)
 
-### test the model 
+### Test the Model 
 predicted_y = predict(lasso_model, 
                       s= best_lambda,
                       newx = testing_x)
 ### RMSE
 RMSE_LASSO<- RMSE(predicted_y, testing_y)
-RMSE_LASSO #0.01825552
+RMSE_LASSO 
 
-#####Regression Trees RMSE= 0.222; Random Forest RMSE= 0.138; Ridge RMSE~0.01708521; Lasso RMSE~0.01825552.#####
 ```
