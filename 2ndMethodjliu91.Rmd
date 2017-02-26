@@ -30,8 +30,8 @@ RMSE <- function(x,y){
     return(a)
 }
 
-#Root Mean Squared Error
-#### R, Regression Trees, function rpart(), method "anova" ####
+
+#### Regression Trees, "anova" ####
 model1 <- rpart(SalePrice ~., data = train, method = "anova")
 predict1 <- predict(model1, test)
 RMSE1 <- RMSE(predict1, test$SalePrice)
@@ -40,7 +40,7 @@ plot1 <- predict1-test$SalePrice
 RMSE1
 
 
-#### R, Random Forests, function randomForest(), method "anova" ####
+#### Random Forests, "anova" ####
 model2 <- randomForest(SalePrice ~., data = train, method = "anova",
                       ntree = 300,
                       mtry = 26,
@@ -53,8 +53,7 @@ RMSE2 <- round(RMSE2, digits = 3)
 plot2 <- predict2-test$SalePrice
 RMSE2
 
-#Regression Trees RMSE= 0.221; Random Forest RMSE= 0.137, RMSE2 better. 
-#### Plot "The difference between predict and real values" ####
+#### Plot: "Difference between predict and real values" ####
 
 data_plot <- data.frame("regression trees" = plot1,
                         "random forests" = plot2)
@@ -76,13 +75,13 @@ ggplot(data_plot, aes(x = Id, y = value, colour = method))+
           axis.text.y = element_text(size = 14), 
           axis.title.y = element_text(size = 14),
           title = element_text(size = 16))
+
 ```
 
 
-
 ```{r, echo=TRUE}
-library(ggplot2) # Data visualization
-library(readr) # CSV file I/O, e.g. the read_csv function
+library(ggplot2) 
+library(readr) 
 library(Hmisc)
 library("caret")
 library("rpart")
@@ -92,21 +91,19 @@ library("e1071")
 data= read.csv("~/Desktop/train.csv", header = T, na.strings= "NA")
 data2 = read.csv("~/Desktop/test.csv", header = T, na.strings= "NA")
 
-# a function to calculate % of missing data
+# Calculate Missing Data
 MissingPercentage <- function(x){ sum(is.na(x)/length(x)*100 )}  
 
 sort( apply(data, 2, MissingPercentage ), decreasing = TRUE )
 
-# check number of NA
+# Check for #NA and Delete
 sort( sapply(data, function(x) sum(is.na(x))) , decreasing = TRUE )
-# Delete columns with more than 5% missing data
 library(dplyr)
 data = select(data, -c(PoolQC, MiscFeature, Alley, Fence, FireplaceQu, LotFrontage))
 
-# Use CART to do imputation - Classification and regression tree
+# CART: Classification, test original and Imputed data
 library(mice)
 imp_data <- mice(data, m=1, method='cart', printFlag= FALSE )
-# Test original and Imputed data
 table( data$GrageType)
 table( imp_data$imp$GrageType)
 
@@ -115,6 +112,7 @@ data_complete <- complete(imp_data)
 
 # Confirm no NAs
 sum( sapply( data_complete, function(x) { sum(is.na(x))} ) )
+#0, success
 # save data to CSV
 write.csv(data_complete , file = "data_complete.csv" )
 # data_complete = read.csv("data_complete.csv", header = T )
@@ -136,7 +134,7 @@ regfit.full=regsubsets(SalePrice~
                          LotArea+OverallQual+OverallCond+YearBuilt+BsmtQual+BsmtFinSF1+
                          BsmtFinSF2+BsmtUnfSF+X1stFlrSF+X2ndFlrSF+BedroomAbvGr+
                          KitchenAbvGr+KitchenQual+GarageCars+PoolArea,data=traindata,nvmax=19)
-#nvmax default max is 8
+
 summary_reg = summary(regfit.full)
 names(summary_reg)
 summary_reg$rsq # r square
@@ -203,13 +201,12 @@ dim(coef(ridge_model)) # 233 for predictor, 100 for lambda
 
 plot(ridge_model, xvar = "lambda", label = TRUE)
 
-### choose the best value of lambda that would minimize the error. Run cross validation
+#Best Lambda
 set.seed(2)
 cv_error = cv.glmnet(training_x, 
                      training_y, 
                      alpha = 0) #default 10 fold cv
 plot(cv_error) # cross-validation curve (red dotted line), upper and lower standard deviation curves 
-# Two selected ??'s:vertical dotted lines
 
 best_lambda = cv_error$lambda.min
 best_lambda
@@ -297,11 +294,10 @@ glm.fit=glm(sale_above_avg~
               X1stFlrSF+X2ndFlrSF+BedroomAbvGr+
               KitchenAbvGr+KitchenQual+GarageCars,
             data=traindata,family =binomial)
-summary(glm.fit) # but have a problem of perfect separation
+summary(glm.fit) 
 anova(glm.fit, test="Chisq")
 
 # Prediction and accuracy test
-
 fitted.results <- predict(glm.fit,newdata=testdata,type='response')
 fitted.results <- ifelse(fitted.results > 0.5,1,0)
 
