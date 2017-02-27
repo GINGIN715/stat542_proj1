@@ -23,7 +23,7 @@ for(i in colnames(df[,sapply(df, is.character)])){
 test.n <- sample(1:nrow(df), nrow(df)/3, replace = F)
 test <- df[test.n,]
 train <- df[-test.n,]
-rm(test.n, df)
+
 RMSE <- function(x,y){
     a <- sqrt(sum((log(x)-log(y))^2)/length(y))
     return(a)
@@ -36,7 +36,7 @@ predict1 <- predict(model1, test)
 RMSE1 <- RMSE(predict1, test$SalePrice)
 RMSE1 <- round(RMSE1, digits = 3)
 plot1 <- predict1-test$SalePrice
-RMSE1 #0.222
+RMSE1 
 
 
 #### Random Forests, "anova" ####
@@ -50,9 +50,14 @@ predict2 <- predict(model2, test)
 RMSE2 <- RMSE(predict2, test$SalePrice)
 RMSE2 <- round(RMSE2, digits = 3)
 plot2 <- predict2-test$SalePrice
-RMSE2 #0.138
+RMSE2 
 
-#### Plot: "Difference between predict and real values" ####
+### BestPredForest.csv
+BestPredForest <- data.frame(Id= test.n, PredSalePrice= predict2, SalePrice= test$SalePrice)
+write.csv(BestPredForest, "BestPredForest.csv")
+
+
+### Plot: "Difference between predict and real values" 
 data_plot <- data.frame("regression trees" = plot1,
                         "random forests" = plot2)
 data_plot$Id <- row.names(data_plot)
@@ -88,9 +93,9 @@ library("randomForest")
 library("e1071")
 
 # Impute raw data 
-train <- read.csv("~/Desktop/train.csv",stringsAsFactors=T)
+train <- read.csv("~/Desktop/train.csv",header = T, na.strings= "NA")
 SalePrice = train$SalePrice
-test <- read.csv("~/Desktop/test.csv",stringsAsFactors=T)
+test <- read.csv("~/Desktop/test.csv",header = T, na.strings= "NA")
 df <- rbind(train[,!(names(train) %in% c("SalePrice"))],test)
 print(sum(is.na(df)))
 df$YearBuilt<-as.factor(df$YearBuilt)
@@ -250,11 +255,11 @@ RMSE <- function(x,y){
 }
 
 ####Ridge####
-# Convert any qualitative variables to dummy variables
+### Convert any qualitative variables to dummy variables
 x=model.matrix(SalePrice~.,myData)[,-1] # toss out intercept column
 y=myData$SalePrice
 
-# Split the dataset into training and testing
+### Split the dataset into training and testing
 train = sample(1:nrow(x), nrow(x)/2)
 test = -train
 
@@ -264,16 +269,14 @@ testing_x = x[test,]
 training_y = y[train]
 testing_y = y[test]
 
-# glmnet: Ridge and Lasso
 library(glmnet)
-#lambda 10^10 to 10^-2
 grid = 10^seq (10,-2,length =100)
 ridge_model = glmnet(training_x,training_y,alpha = 0,lambda = grid, standardize = FALSE)
-dim(coef(ridge_model)) # 233 for predictor, 100 for lambda
+dim(coef(ridge_model))
 
 plot(ridge_model, xvar = "lambda", label = TRUE)
 
-#Best Lambda
+### Best Lambda
 cv_error = cv.glmnet(training_x, 
                      training_y, 
                      alpha = 0) #default 10 fold cv
@@ -282,7 +285,7 @@ plot(cv_error) # cross-validation curve (red dotted line), upper and lower stand
 best_lambda = cv_error$lambda.min
 best_lambda
 
-# Model with Best Lambda
+### Model with Best Lambda
 model_coef = predict(ridge_model, 
                      type = "coefficients",
                      s= best_lambda)
@@ -295,12 +298,16 @@ predicted_y = predict(ridge_model,
 RMSE_RIDGE=RMSE(predicted_y, testing_y)
 RMSE_RIDGE 
 
+### BestPredRIDGE.csv
+BestPredRIDGE <- data.frame(Id = testdata$Id, PredSalePrice= predicted_y, SalePrice= testing_y)
+write.csv(BestPredRIDGE, "BestPredRIDGE.csv")
+
 ####LASSO####
-# Convert any qualitative variables to dummy variables
+### Convert any qualitative variables to dummy variables
 x=model.matrix(SalePrice~.,myData)[,-1] # get rid of intercept column
 y=myData$SalePrice
 
-# Split the dataset into training and testing
+### Split the dataset into training and testing
 train = sample(1:nrow(x), nrow(x)/2)
 test = -train
 
@@ -335,11 +342,14 @@ model_coef = predict(lasso_model,
                      s= best_lambda)
 
 ### Test the Model 
-predicted_y = predict(lasso_model, 
+predicted_yL = predict(lasso_model, 
                       s= best_lambda,
                       newx = testing_x)
 ### RMSE
-RMSE_LASSO<- RMSE(predicted_y, testing_y)
+RMSE_LASSO<- RMSE(predicted_yL, testing_y)
 RMSE_LASSO 
 
+### BestPredLASSO.csv
+BestPredLASSO <- data.frame(Id = testdata$Id, PredSalePrice= predicted_yL, SalePrice= testing_y)
+write.csv(BestPredLASSO, "BestPredLASSO.csv")
 ```
