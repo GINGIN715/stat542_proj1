@@ -53,9 +53,8 @@ plot2 <- predict2-test$SalePrice
 RMSE2 
 
 ### BestPredForest.csv
-BestPredForest <- data.frame(Id= test.n, PredSalePrice= predict2, SalePrice= test$SalePrice)
+BestPredForest <- data.frame(Id= test.n, PredSalePrice= predict2)
 write.csv(BestPredForest, "BestPredForest.csv")
-
 
 ### Plot: "Difference between predict and real values" 
 data_plot <- data.frame("regression trees" = plot1,
@@ -98,6 +97,7 @@ SalePrice = train$SalePrice
 test <- read.csv("~/Desktop/test.csv",header = T, na.strings= "NA")
 df <- rbind(train[,!(names(train) %in% c("SalePrice"))],test)
 print(sum(is.na(df)))
+# Some of these variables are ordinal or simply factors encoded with numerical values.
 df$YearBuilt<-as.factor(df$YearBuilt)
 df$YearRemodAdd<-as.factor(df$YearRemodAdd)
 df$MSSubClass<-as.factor(df$MSSubClass)
@@ -108,6 +108,7 @@ df$YrSold<-as.factor(df$YrSold)
 df$GarageYrBlt<-as.factor(df$GarageYrBlt)
 
 # Imputing missing data
+#Let's Formalize these ideas in one function:
 dfClean <-function(df){
   # Pool Variable: If PoolQC = NA and PoolArea = 0 , assign factor NoPool
   df$PoolQC <- as.character(df$PoolQC)
@@ -236,6 +237,7 @@ fillMiss<- function(x){
 df[,sapply(df,function(x){!(is.numeric(x))}) ]<-as.data.frame(apply(df[,sapply(df,function(x){!(is.numeric(x))}) ],2,fillMiss))
 
 # Set LotFrontage where it is not defined to sqrt(LotArea)
+# Inspired by https://www.kaggle.com/meikegw/house-prices-advanced-regression-techniques/filling-up-missing-values
 df$LotFrontage[is.na(df$LotFrontage)]=sqrt(df$LotArea)[is.na(df$LotFrontage)]
 
 # Finally get the training data back and transform
@@ -244,11 +246,50 @@ myData$SalePrice=log(train$SalePrice)
 myData$LotArea=sqrt(myData$LotArea)
 myData$MasVnrArea=sqrt(myData$MasVnrArea)
 
+# Year built as numerical
+myData$YearBuilt=as.numeric(myData$YearBuilt)
+
+# Remove Utilities and Street
+myData=subset(myData,select=-c(Utilities,Street))
+
 # Break into traindata and testdata
 ntrain=round(nrow(myData)*0.75)
 train.id=sample(1:nrow(myData), ntrain)
 traindata=myData[train.id,]
 testdata=myData[-train.id,]
+
+# See if there are any new levels!
+# Loop over all predictors
+for(i in 1:ncol(traindata)){
+  # Only consider categorical ones
+  if(is.factor(traindata[,i])){
+    tt <- table(traindata[,i]) # Most frequent level
+    #Loop over all levels of the categorical predcitor
+    for(l in levels(traindata[,i])){
+      # If the level is not completely ommited, and is occupied in the test but not train set 
+      if(!is.na(summary(traindata[,i])[l])){
+        if(summary(traindata[,i])[l]==0){
+          if(summary(testdata[,i])[l]!=0){
+            # Before: There is a discrepancy between the following printouts
+            # print(summary(testdata[,i])[l])
+            # print(summary(traindata[,i])[l])
+            # If satisfied, just replace it with the most common category!
+            testdata[,i][testdata[,i]==l]=names(tt[which.max(tt)])
+            # After: The discrepancy is gone!
+            # print(summary(testdata[,i])[l])
+            # print(summary(traindata[,i])[l])
+          }
+        }
+      }else{
+        # If the level isn't defined in the train but is in the test data
+        if(!is.na(summary(testdata[,i])[l])){
+          # If satisfied, just replace it with the most common category!
+          testdata[,i][testdata[,i]==l]=names(tt[which.max(tt)])
+        }
+      }
+    }
+  }
+}
 RMSE <- function(x,y){
     a <- sqrt(sum((log(x)-log(y))^2)/length(y))
     return(a)
@@ -299,7 +340,8 @@ RMSE_RIDGE=RMSE(predicted_y, testing_y)
 RMSE_RIDGE 
 
 ### BestPredRIDGE.csv
-BestPredRIDGE <- data.frame(Id = testdata$Id, PredSalePrice= predicted_y, SalePrice= testing_y)
+predicty<- exp(predicted_y)
+BestPredRIDGE <- data.frame(Id = testdata$Id, Pred= predicty)
 write.csv(BestPredRIDGE, "BestPredRIDGE.csv")
 
 ####LASSO####
@@ -350,6 +392,7 @@ RMSE_LASSO<- RMSE(predicted_yL, testing_y)
 RMSE_LASSO 
 
 ### BestPredLASSO.csv
-BestPredLASSO <- data.frame(Id = testdata$Id, PredSalePrice= predicted_yL, SalePrice= testing_y)
+predictyL<- exp(predicted_yL)
+BestPredLASSO <- data.frame(Id = testdata$Id, Pred= predictyL)
 write.csv(BestPredLASSO, "BestPredLASSO.csv")
 ```
